@@ -5,6 +5,18 @@ Mudanças relevantes do Smart Attendance, da mais recente para a mais antiga. O 
 ## Não lançado
 
 ### Adicionado
+- **Justificativa de faltas:** o aluno escolhe a aula, explica o motivo e anexa atestado (PDF/JPG/PNG até 5 MB, disco privado `justificativas`; Supabase Storage em produção via `JUSTIFICATIVAS_DISK=s3`). O professor aprova (a falta é abonada) ou recusa, e o aluno recebe e-mail.
+- **Correção de presença:** tela "Chamadas" do professor para marcar/desmarcar presença numa aula já feita, com motivo obrigatório e histórico (`presenca_ajustes`). Coluna `presencas.origem` (`qr`, `correcao`, `justificativa`).
+- **Verificação em duas etapas (TOTP):** obrigatória para o Master (`TWO_FACTOR_MASTER_OBRIGATORIO`), opcional para professor e aluno; 8 códigos de recuperação; o Master pode remover o 2FA de um usuário.
+- **Gráficos de presença** por matéria (professor) e por turma (Master), com Chart.js 4.4.1 vendorizado.
+- **Editar e excluir** (soft delete) alunos, professores e matérias no painel do Master.
+- **Exportar presenças em Excel (.xlsx)** no relatório do professor e na Central de Presenças do Master (sem CPF nem e-mail).
+- **E-mail institucional:** exemplos de SMTP (Microsoft 365, Google Workspace, servidor próprio) no `.env.example` e botão "Enviar e-mail de teste" no Master.
+
+### Corrigido (deste pacote)
+- `laravel/framework` atualizado para a 12.72.0: corrige o alerta CVE-2026-128083 (baixo) que fazia o `composer audit` do CI falhar.
+- Índice único `presencas(aluno_id, materia_id, codigo_aula)`: duas requisições simultâneas não duplicam mais a presença. A migration remove só as cópias exatas (mesmo aluno, matéria e código); o mesmo código em matérias diferentes, comum nos dados de demonstração antigos, é mantido.
+- Registros de presença e justificativas continuam legíveis depois que o aluno, o professor ou a matéria é excluído.
 - **QR Code que muda a cada 30 segundos.** O link da chamada leva um token assinado (HMAC) que vale na janela atual e na anterior; uma foto ou print do QR Code deixa de registrar presença em até 1 minuto. A tela do professor renova o QR sozinha e mostra a contagem regressiva.
 - **Content-Security-Policy com nonce por requisição** em todas as respostas, inclusive páginas de erro: scripts e estilos em bloco injetados deixam de executar. Novas diretivas `object-src`, `base-uri`, `form-action` e `frame-ancestors`.
 - **Dependabot**, revisão de dependências em Pull Requests e varredura de segredos (gitleaks); `timeout-minutes` nos jobs do CI. O gitleaks fica fixado por SHA e não publica os segredos encontrados.
@@ -12,11 +24,13 @@ Mudanças relevantes do Smart Attendance, da mais recente para a mais antiga. O 
 - **`trustHosts`:** o cabeçalho `Host` só é aceito para os domínios do projeto (`HostsConfiaveis`); outros recebem 400. Domínio próprio exige a variável `TRUSTED_HOSTS`.
 - Bibliotecas `qrcodejs`, `jsPDF` e `jsPDF-AutoTable` servidas de `public/js/vendor/` (hash igual ao da cdnjs, conferido por teste); a CSP não cita mais nenhuma CDN de scripts.
 - Rota `/dashboard/master/ambiente/php` (só Master): mostra a versão do PHP em execução e se ela já tem a correção das CVE-2026-109618/109619 (`VersaoPhp`, `AmbienteController`).
+- SEC-11 resolvida em produção: o site responde `PHP/8.5.12`. Passo a passo da troca da senha do Master (SEC-02) e roteiro de apresentação em `docs/apresentacao.md`.
 - Registro da **SEC-11**: o PHP em produção (runtime `vercel-php@0.9.0`) pode estar sem a correção das CVE-2026-109618 e CVE-2026-109619; versão não confirmada. Correção do documento das Actions: o CI usa PHP 8.4, não 8.3.
 - Arquivo `LICENSE` (MIT), já declarada no `composer.json`.
 - Documentos [Falhas de segurança conhecidas](docs/falhas-de-seguranca.md), [Revisão das GitHub Actions](docs/revisao-github-actions.md) e [Revisão do projeto](docs/relatorios/revisao-do-projeto-2026-11.md).
 
 ### Alterado
+- Vercel: deploy automático desligado nas branches de trabalho (`feat/`, `fix/`, `docs/`, `melhoria(s)/`, `chore/`, `claude/`), que subiam sem variáveis de ambiente e falhavam. A `main` continua publicando em produção.
 - Teste de assinatura do QR rotativo deixou de ser instável (falhava em 1 de cada 16 execuções).
 - Dependências npm atualizadas com `npm audit fix` (0 vulnerabilidades).
 - Pacotes Symfony atualizados (`http-foundation`, `http-kernel`, `mime`, `routing`, `yaml`): corrige os 8 avisos do `composer audit`.
